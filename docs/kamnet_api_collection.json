@@ -1,0 +1,560 @@
+{
+  "info": {
+    "name": "Kamnet Marketplace API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12345",
+    "description": "API collection for Kamnet Marketplace - Pakistan's local service marketplace"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"name\": \"Test User\",\n\t\"email\": \"user@example.com\",\n\t\"password\": \"password123\",\n\t\"role\": \"user\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Register a new user with name, email, password and role (user or talent)"
+          },
+          "response": []
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"email\": \"user@example.com\",\n\t\"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login with email and password"
+          },
+          "response": []
+        },
+        {
+          "name": "Google OAuth",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"token\": \"google_oauth_token\",\n\t\"role\": \"user\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "google"]
+            },
+            "description": "Authenticate with Google OAuth token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Get the currently authenticated user's profile"
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Logout the current user (invalidate token)"
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints for registration, login, and user management"
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Get All Tasks",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks?_page=1&_limit=10&category=Development&location=Lahore&q=website",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks"],
+              "query": [
+                {
+                  "key": "_page",
+                  "value": "1"
+                },
+                {
+                  "key": "_limit",
+                  "value": "10"
+                },
+                {
+                  "key": "category",
+                  "value": "Development"
+                },
+                {
+                  "key": "location",
+                  "value": "Lahore"
+                },
+                {
+                  "key": "q",
+                  "value": "website"
+                }
+              ]
+            },
+            "description": "Get all tasks with pagination, filtering by category, location and search term"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Featured Tasks",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/featured",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "featured"]
+            },
+            "description": "Get featured tasks (limited to 3 tasks)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Task By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{taskId}}"
+                }
+              ]
+            },
+            "description": "Get a single task by its ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"title\": \"Website Development\",\n\t\"description\": \"Need a professional website for my business\",\n\t\"budget\": 15000,\n\t\"currency\": \"PKR\",\n\t\"location\": \"Lahore, Pakistan\",\n\t\"category\": \"Development\",\n\t\"skills\": [\"JavaScript\", \"React\", \"Node.js\"],\n\t\"deadlineDate\": \"2023-12-31T00:00:00.000Z\",\n\t\"address\": {\n\t\t\"street\": \"Main Street\",\n\t\t\"city\": \"Lahore\",\n\t\t\"province\": \"Punjab\"\n\t},\n\t\"coordinates\": {\n\t\t\"lat\": 31.5204,\n\t\t\"lng\": 74.3587\n\t}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks"]
+            },
+            "description": "Create a new task (requires user authentication)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"title\": \"Updated Website Development Task\",\n\t\"budget\": 20000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{taskId}}"
+                }
+              ]
+            },
+            "description": "Update an existing task (only by task owner)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Task",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{taskId}}"
+                }
+              ]
+            },
+            "description": "Delete a task (only by task owner)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/me/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "me", "tasks"]
+            },
+            "description": "Get all tasks created by the authenticated user"
+          },
+          "response": []
+        }
+      ],
+      "description": "Task related endpoints for creating, reading, updating, and deleting tasks"
+    },
+    {
+      "name": "Applications",
+      "item": [
+        {
+          "name": "Create Application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"taskId\": \"{{taskId}}\",\n\t\"coverLetter\": \"I am interested in this task and have the required skills\",\n\t\"proposedBudget\": 14000,\n\t\"estimatedCompletionTime\": {\n\t\t\"value\": 7,\n\t\t\"unit\": \"days\"\n\t}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications"]
+            },
+            "description": "Create a new application for a task (requires talent authentication)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Task Applications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/task/:taskId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", "task", ":taskId"],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "{{taskId}}"
+                }
+              ]
+            },
+            "description": "Get all applications for a specific task (only task owner can access)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Application By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{applicationId}}"
+                }
+              ]
+            },
+            "description": "Get a single application by ID (only task owner or talent can access)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Application Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"status\": \"accepted\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{applicationId}}"
+                }
+              ]
+            },
+            "description": "Update the status of an application (task owner can accept/reject, talent can withdraw)"
+          },
+          "response": []
+        }
+      ],
+      "description": "Application related endpoints for creating and managing task applications"
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Complete Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"name\": \"Updated Name\",\n\t\"phone\": \"+923001234567\",\n\t\"bio\": \"Professional developer with 5 years experience\",\n\t\"location\": \"Karachi, Pakistan\",\n\t\"picture\": \"https://example.com/profile.jpg\",\n\t\"skills\": [\"JavaScript\", \"React\", \"Node.js\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/frontend/complete-profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "frontend", "complete-profile"]
+            },
+            "description": "Complete user profile with additional details"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/users/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Get a user's public profile by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Talent Profile By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/talents/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "talents", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{talentId}}"
+                }
+              ]
+            },
+            "description": "Get a talent's public profile by ID with additional talent-specific info"
+          },
+          "response": []
+        }
+      ],
+      "description": "User profile related endpoints"
+    },
+    {
+      "name": "Map",
+      "item": [
+        {
+          "name": "Get Map Markers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/map/markers?city=Lahore",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "map", "markers"],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "Lahore"
+                }
+              ]
+            },
+            "description": "Get markers for tasks to display on a map"
+          },
+          "response": []
+        }
+      ],
+      "description": "Map related endpoints for geographical data"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "talentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "applicationId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+name: Kamnet Backend CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x]
+        mongodb-version: ['5.0', '6.0']
+      
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Start MongoDB
+      uses: supercharge/mongodb-github-action@1.8.0
+      with:
+        mongodb-version: ${{ matrix.mongodb-version }}
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run linter
+      run: npm run lint || echo "Linting not configured"
+      
+    - name: Run tests
+      run: npm test
+      env:
+        NODE_ENV: test
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js 16.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16.x
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Generate deployment package
+      run: zip -r deploy.zip * .[^.]* -x "*.git*" node_modules
+      
+    - name: Deploy to AWS Elastic Beanstalk
+      uses: einaregilsson/beanstalk-deploy@v20
+      with:
+        aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        application_name: kamnet-backend
+        environment_name: kamnet-backend-prod
+        version_label: kamnet-backend-${{ github.sha }}
+        region: ap-south-1
+        deployment_package: deploy.zip
+        
+    - name: Send deployment notification
+      uses: rtCamp/action-slack-notify@v2
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_CHANNEL: deployments
+        SLACK_COLOR: ${{ job.status }}
+        SLACK_TITLE: Kamnet Backend Deployment
+        SLACK_MESSAGE: Backend deployed to production
+        SLACK_FOOTER: Powered by GitHub Actions
