@@ -47,31 +47,47 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
-    - name: Use Node.js 16.x
-      uses: actions/setup-node@v3
+    - name: Setup Node (CI)
+      uses: actions/setup-node@v4
       with:
-        node-version: 16.x
+        node-version: ${{ secrets.NODE_VERSION || '18' }}
         cache: 'npm'
         
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Generate deployment package
-      run: zip -r deploy.zip * .[^.]* -x "*.git*" node_modules
-      
-    - name: Deploy to AWS Elastic Beanstalk
-      uses: einaregilsson/beanstalk-deploy@v20
+    - name: Deploy to EC2 via SSH
+      uses: appleboy/ssh-action@v1.2.0
       with:
-        aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        application_name: kamnet-backend
-        environment_name: kamnet-backend-prod
-        version_label: kamnet-backend-${{ github.sha }}
-        region: ap-south-1
-        deployment_package: deploy.zip
-        
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: ${{ secrets.EC2_SSH_PORT }}
+        script_stop: true
+        script: |
+          set -e
+          cd "${{ secrets.WORKDIR }}"
+          
+          # Ensure correct branch/commit
+          git fetch --all --prune
+          git checkout "${{ secrets.DEPLOY_BRANCH || 'main' }}"
+          git reset --hard "origin/${{ secrets.DEPLOY_BRANCH || 'main' }}"
+          # Alternatively deploy exact commit:
+          # git fetch origin $GITHUB_SHA && git checkout $GITHUB_SHA
+          
+          # Install production deps
+          npm ci --omit=dev
+          
+          # Optional: run migrations
+          # npm run migrate
+          
+          # Zero-downtime restart with PM2
+          if pm2 describe "${{ secrets.PM2_APP_NAME }}" >/dev/null 2>&1; then
+            pm2 reload "${{ secrets.PM2_APP_NAME }}"
+          else
+            pm2 start index.js --name "${{ secrets.PM2_APP_NAME }}"
+          fi
+          pm2 save
+      
     - name: Send deployment notification
       uses: rtCamp/action-slack-notify@v2
       env:
