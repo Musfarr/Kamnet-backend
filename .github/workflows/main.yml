@@ -54,11 +54,27 @@ jobs:
       with:
         node-version: ${{ secrets.NODE_VERSION || '18' }}
         cache: 'npm'
+    
+    - name: Validate required secrets
+      run: |
+        missing=0
+        for k in EC2_USER EC2_SSH_KEY EC2_SSH_PORT WORKDIR PM2_APP_NAME; do
+          if [ -z "${{ secrets.EC2_USER }}" ] && [ "$k" = "EC2_USER" ]; then echo "Missing secret: EC2_USER"; missing=1; fi
+          if [ -z "${{ secrets.EC2_SSH_KEY }}" ] && [ "$k" = "EC2_SSH_KEY" ]; then echo "Missing secret: EC2_SSH_KEY"; missing=1; fi
+          if [ -z "${{ secrets.EC2_SSH_PORT }}" ] && [ "$k" = "EC2_SSH_PORT" ]; then echo "Missing secret: EC2_SSH_PORT"; missing=1; fi
+          if [ -z "${{ secrets.WORKDIR }}" ] && [ "$k" = "WORKDIR" ]; then echo "Missing secret: WORKDIR"; missing=1; fi
+          if [ -z "${{ secrets.PM2_APP_NAME }}" ] && [ "$k" = "PM2_APP_NAME" ]; then echo "Missing secret: PM2_APP_NAME"; missing=1; fi
+        done
+        # Host can be EC2_HOST or SSH_HOST
+        if [ -z "${{ secrets.EC2_HOST }}" ] && [ -z "${{ secrets.SSH_HOST }}" ]; then
+          echo "Missing secret: set EC2_HOST or SSH_HOST"; missing=1
+        fi
+        if [ $missing -eq 1 ]; then exit 1; fi
         
     - name: Deploy to EC2 via SSH
       uses: appleboy/ssh-action@v1.2.0
       with:
-        host: ${{ secrets.EC2_HOST }}
+        host: ${{ secrets.EC2_HOST || secrets.SSH_HOST }}
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_SSH_PORT }}
