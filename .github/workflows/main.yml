@@ -83,6 +83,9 @@ jobs:
           set -e
           cd "${{ secrets.WORKDIR }}"
           
+          echo "Node: $(node -v)"
+          echo "NPM:  $(npm -v)"
+          
           # Ensure correct branch/commit
           git fetch --all --prune
           git checkout "${{ secrets.DEPLOY_BRANCH || 'main' }}"
@@ -95,6 +98,13 @@ jobs:
           
           # Optional: run migrations
           # npm run migrate
+          
+          # Ensure PM2 is available
+          if ! command -v pm2 >/dev/null 2>&1; then
+            echo "PM2 not found. Installing globally..."
+            sudo npm i -g pm2
+          fi
+          echo "PM2: $(pm2 -v)"
           
           # Zero-downtime restart with PM2
           if pm2 describe "${{ secrets.PM2_APP_NAME }}" >/dev/null 2>&1; then
