@@ -80,39 +80,29 @@ jobs:
         port: ${{ secrets.EC2_SSH_PORT }}
         script_stop: true
         script: |
-          set -e
+          echo "📁 Changing to working directory..."
           cd "${{ secrets.WORKDIR }}"
           
-          echo "Node: $(node -v)"
-          echo "NPM:  $(npm -v)"
-          
-          # Ensure correct branch/commit
+          echo "🔄 Fetching git changes..."
           git fetch --all --prune
-          git checkout "${{ secrets.DEPLOY_BRANCH || 'main' }}"
-          git reset --hard "origin/${{ secrets.DEPLOY_BRANCH || 'main' }}"
-          # Alternatively deploy exact commit:
-          # git fetch origin $GITHUB_SHA && git checkout $GITHUB_SHA
           
-          # Install production deps
+          echo "📌 Checking out branch..."
+          git checkout "${{ secrets.DEPLOY_BRANCH || 'main' }}"
+          
+          echo "🔁 Resetting to latest commit..."
+          git reset --hard "origin/${{ secrets.DEPLOY_BRANCH || 'main' }}"
+          
+          echo "📦 Installing dependencies..."
           npm ci --omit=dev
           
-          # Optional: run migrations
-          # npm run migrate
-          
-          # Ensure PM2 is available
-          if ! command -v pm2 >/dev/null 2>&1; then
-            echo "PM2 not found. Installing globally..."
-            sudo npm i -g pm2
-          fi
-          echo "PM2: $(pm2 -v)"
-          
-          # Zero-downtime restart with PM2
+          echo "🚀 Deploying with PM2..."
           if pm2 describe "${{ secrets.PM2_APP_NAME }}" >/dev/null 2>&1; then
             pm2 reload "${{ secrets.PM2_APP_NAME }}"
           else
             pm2 start index.js --name "${{ secrets.PM2_APP_NAME }}"
           fi
           pm2 save
+
       
     - name: Send deployment notification
       uses: rtCamp/action-slack-notify@v2
