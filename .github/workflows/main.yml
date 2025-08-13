@@ -97,9 +97,17 @@ jobs:
           
           echo "🚀 Deploying with PM2..."
           if pm2 describe "${{ secrets.PM2_APP_NAME }}" >/dev/null 2>&1; then
-            pm2 reload "${{ secrets.PM2_APP_NAME }}"
+            pm2 reload "${{ secrets.PM2_APP_NAME }}" || {
+              echo "🚨 PM2 reload failed. Capturing logs..."
+              pm2 logs "${{ secrets.PM2_APP_NAME }}" --lines 100 --nostream
+              exit 1
+            }
           else
-            pm2 start index.js --name "${{ secrets.PM2_APP_NAME }}"
+            pm2 start index.js --name "${{ secrets.PM2_APP_NAME }}" || {
+              echo "🚨 PM2 start failed. Capturing logs..."
+              pm2 logs --lines 100 --nostream
+              exit 1
+            }
           fi
           pm2 save
 
