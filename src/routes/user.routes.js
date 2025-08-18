@@ -17,6 +17,7 @@ router.get('/:id', param('id').isMongoId().withMessage('Invalid user ID format')
 
 // Protected routes
 router.put('/complete-profile', protect, validate(validationSchemas.completeProfile), completeProfile);
+router.put('/:userId/profile', protect, param('userId').isString().withMessage('Invalid user ID format'), validate(validationSchemas.completeProfile), updateProfile);
 router.put('/', protect, validate(validationSchemas.completeProfile), updateProfile);
 router.delete('/', protect, deleteAccount);
 

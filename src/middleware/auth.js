@@ -24,13 +24,14 @@ const protect = async (req, res, next) => {
       req.userId = decoded.id;
       req.role = decoded.role;
       
-      // Optionally: check if user still exists in DB (important for sensitive operations)
-      if (process.env.NODE_ENV === 'production' && req.originalUrl.includes('/sensitive/')) {
-        const user = await User.findById(req.userId);
-        if (!user) {
-          throw new Error('User no longer exists');
-        }
+      // Always fetch the user to have full user object available in controllers
+      const user = await User.findById(req.userId);
+      if (!user) {
+        throw new Error('User no longer exists');
       }
+      
+      // Add full user object to request
+      req.user = user;
       
       next();
     } catch (error) {

@@ -79,7 +79,30 @@ const validationSchemas = {
     body('picture')
       .optional()
       .trim()
-      .isURL().withMessage('Picture must be a valid URL')
+      .isURL().withMessage('Picture must be a valid URL'),
+    body('skills')
+      .optional()
+      .isArray().withMessage('Skills must be an array'),
+    body('hourlyRate')
+      .optional()
+      .isNumeric().withMessage('Hourly rate must be a number')
+      .custom(value => value >= 0).withMessage('Hourly rate must be a positive number'),
+    body('address')
+      .optional()
+      .trim()
+      .isLength({ max: 100 }).withMessage('Address cannot be more than 100 characters'),
+    body('city')
+      .optional()
+      .trim()
+      .isLength({ max: 50 }).withMessage('City cannot be more than 50 characters'),
+    body('country')
+      .optional()
+      .trim()
+      .isLength({ max: 50 }).withMessage('Country cannot be more than 50 characters'),
+    body('postalCode')
+      .optional()
+      .trim()
+      .isLength({ max: 20 }).withMessage('Postal code cannot be more than 20 characters')
   ],
   
   // Task validations

@@ -78,7 +78,7 @@ exports.getUserProfile = async (req, res, next) => {
 
 /**
  * @desc    Update user profile
- * @route   PUT /api/users
+ * @route   PUT /api/users/:userId/profile
  * @access  Private
  */
 exports.updateProfile = async (req, res, next) => {
@@ -88,11 +88,20 @@ exports.updateProfile = async (req, res, next) => {
       phone, 
       bio, 
       location, 
-      picture 
+      picture,
+      skills,
+      hourlyRate,
+      address,
+      city,
+      country,
+      postalCode
     } = req.body;
 
+    // Get userId from params or use authenticated user's ID
+    const userId = req.params.userId || req.userId;
+
     // Find user by ID
-    const user = await User.findById(req.userId);
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -102,7 +111,7 @@ exports.updateProfile = async (req, res, next) => {
     }
 
     // Check if user is trying to update their own profile
-    if (user._id.toString() !== req.userId) {
+    if (user._id.toString() !== req.userId && !req.user?.isAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this profile'
@@ -115,7 +124,15 @@ exports.updateProfile = async (req, res, next) => {
     if (bio) user.bio = bio;
     if (location) user.location = location;
     if (picture) user.picture = picture;
+    if (skills) user.skills = skills;
+    if (hourlyRate) user.hourlyRate = hourlyRate;
+    if (address) user.address = address;
+    if (city) user.city = city;
+    if (country) user.country = country;
+    if (postalCode) user.postalCode = postalCode;
     
+    // Mark profile as completed
+    user.profileCompleted = true;
     user.updatedAt = Date.now();
 
     const updatedUser = await user.save();

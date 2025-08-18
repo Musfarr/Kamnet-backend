@@ -53,6 +53,31 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: 'Lahore, Pakistan'
   },
+  // Additional profile fields
+  skills: {
+    type: [String],
+    default: []
+  },
+  hourlyRate: {
+    type: Number,
+    default: 0
+  },
+  address: {
+    type: String,
+    maxlength: [100, 'Address cannot be more than 100 characters']
+  },
+  city: {
+    type: String,
+    maxlength: [50, 'City cannot be more than 50 characters']
+  },
+  country: {
+    type: String,
+    maxlength: [50, 'Country cannot be more than 50 characters']
+  },
+  postalCode: {
+    type: String,
+    maxlength: [20, 'Postal code cannot be more than 20 characters']
+  },
   profileCompleted: {
     type: Boolean,
     default: false
