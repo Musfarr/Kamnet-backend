@@ -63,9 +63,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(requestLogger);
 
+// Apply CORS middleware first to handle pre-flight requests
+app.use(cors(corsOptions));
+
 // Apply comprehensive security middleware
 app.use(helmet());
-app.use(cors(corsOptions));
 app.use(mongoSanitize());
 app.use(xss());
 app.use(hpp({
