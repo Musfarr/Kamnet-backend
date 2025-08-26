@@ -157,7 +157,15 @@ exports.updateProfile = async (req, res, next) => {
     if (bio) user.bio = bio;
     if (location) user.location = location;
     if (picture) user.picture = picture;
-    if (skills) user.skills = skills;
+    if (skills) {
+      // Handle skills - if it's a JSON string, parse it
+      try {
+        user.skills = typeof skills === 'string' ? JSON.parse(skills) : skills;
+      } catch (error) {
+        logger.error('Error parsing skills:', error);
+        user.skills = Array.isArray(skills) ? skills : [];
+      }
+    }
     if (hourlyRate) user.hourlyRate = hourlyRate;
     if (address) user.address = address;
     if (city) user.city = city;
