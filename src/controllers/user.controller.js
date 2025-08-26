@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('../models/user.model');
+const Talent = require('../models/talent.model');
+const Task = require('../models/task.model');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger();
@@ -19,8 +21,8 @@ exports.completeProfile = async (req, res, next) => {
       picture 
     } = req.body;
 
-    // Find user
-    const user = await User.findById(req.userId);
+    // User object is attached by 'protect' middleware
+    const user = req.user;
 
     if (!user) {
       return res.status(404).json({
@@ -36,13 +38,27 @@ exports.completeProfile = async (req, res, next) => {
     user.location = location || user.location;
     user.picture = picture || user.picture;
     user.profileCompleted = true;
-    user.updatedAt = Date.now();
 
-    const updatedUser = await user.save();
+    await user.save();
+
+    // Format response to match frontend expectation
+    const userData = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      picture: user.picture,
+      phone: user.phone,
+      bio: user.bio,
+      location: user.location,
+      profileCompleted: user.profileCompleted,
+      token: req.headers.authorization ? req.headers.authorization.split(' ')[1] : null
+    };
 
     res.status(200).json({
       success: true,
-      data: updatedUser
+      message: 'Profile completed successfully',
+      ...userData
     });
   } catch (err) {
     logger.error(`Complete profile error: ${err.message}`);
@@ -57,8 +73,10 @@ exports.completeProfile = async (req, res, next) => {
  */
 exports.getUserProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id)
-      .select('-__v -updatedAt');
+    let user = await User.findById(req.params.id).select('-__v -updatedAt');
+    if (!user) {
+        user = await Talent.findById(req.params.id).select('-__v -updatedAt');
+    }
 
     if (!user) {
       return res.status(404).json({
@@ -84,50 +102,29 @@ exports.getUserProfile = async (req, res, next) => {
  */
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { 
-      name, 
-      phone, 
-      bio, 
-      location, 
+    const {
+      name,
+      phone,
+      bio,
+      location,
       picture,
-      skills,
-      hourlyRate,
       address,
       city,
       country,
       postalCode
     } = req.body;
 
-    // Get userId from params or use authenticated user's ID
-    const userId = req.params.userId || req.userId;
+    const userIdToUpdate = req.params.userId;
 
-    // Find user by ID or username
-    let user;
-    
-    // Check if userId is a valid MongoDB ObjectId
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(userId);
-    
-    if (isValidObjectId) {
-      user = await User.findById(userId);
-    } else {
-      // Check if userId is in format 'talent1', 'talent2', etc.
-      const talentMatch = userId.match(/^talent(\d+)$/);
-      
-      if (talentMatch) {
-        // If it's in talent format, find the nth talent user
-        const talentNumber = parseInt(talentMatch[1]);
-        const talents = await User.find({ role: 'talent' }).sort({ createdAt: 1 }).limit(talentNumber);
-        user = talents[talentNumber - 1]; // Get the nth talent (1-indexed)
-      } else {
-        // Try to find by username or email
-        user = await User.findOne({ 
-          $or: [
-            { username: userId },
-            { email: userId }
-          ]
+    // Ensure the user being updated is the same as the authenticated user or the authenticated user is an admin
+    if (req.user.id !== userIdToUpdate && req.user.role !== 'admin') {
+        return res.status(403).json({
+            success: false,
+            message: 'Not authorized to update this profile'
         });
-      }
     }
+
+    const user = await User.findById(userIdToUpdate);
 
     if (!user) {
       return res.status(404).json({
@@ -157,16 +154,6 @@ exports.updateProfile = async (req, res, next) => {
     if (bio) user.bio = bio;
     if (location) user.location = location;
     if (picture) user.picture = picture;
-    if (skills) {
-      // Handle skills - if it's a JSON string, parse it
-      try {
-        user.skills = typeof skills === 'string' ? JSON.parse(skills) : skills;
-      } catch (error) {
-        logger.error('Error parsing skills:', error);
-        user.skills = Array.isArray(skills) ? skills : [];
-      }
-    }
-    if (hourlyRate) user.hourlyRate = hourlyRate;
     if (address) user.address = address;
     if (city) user.city = city;
     if (country) user.country = country;
@@ -195,7 +182,12 @@ exports.updateProfile = async (req, res, next) => {
  */
 exports.deleteAccount = async (req, res, next) => {
   try {
-    await User.findByIdAndDelete(req.userId);
+    const user = req.user;
+    if (user.role === 'talent') {
+      await Talent.findByIdAndDelete(user.id);
+    } else {
+      await User.findByIdAndDelete(user.id);
+    }
 
     res.status(200).json({
       success: true,
@@ -214,15 +206,55 @@ exports.deleteAccount = async (req, res, next) => {
  */
 exports.getUsers = async (req, res, next) => {
   try {
-    const users = await User.find().select('-__v');
+    const users = await User.find().select('-__v').lean();
+    const talents = await Talent.find().select('-__v').lean();
+    const allUsers = [...users, ...talents];
 
     res.status(200).json({
       success: true,
-      count: users.length,
-      data: users
+      count: allUsers.length,
+      data: allUsers
     });
   } catch (err) {
     logger.error(`Get users error: ${err.message}`);
+    next(err);
+  }
+};
+
+/**
+ * @desc    Get user tasks (tasks posted by user)
+ * @route   GET /api/users/tasks
+ * @access  Private/User
+ */
+exports.getUserTasks = async (req, res, next) => {
+  try {
+    const tasks = await Task.find({ user: req.userId })
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    // Map to match frontend expected format
+    const formattedTasks = tasks.map(task => ({
+      id: task._id,
+      title: task.title,
+      description: task.description,
+      budget: task.budget,
+      currency: task.currency || 'PKR',
+      location: task.location,
+      status: task.status,
+      category: task.category,
+      skills: task.skills || [],
+      deadline: task.deadlineDate,
+      createdAt: task.createdAt,
+      coordinates: task.coordinates,
+      applicationsCount: task.applicationsCount || 0
+    }));
+    
+    res.status(200).json({
+      success: true,
+      data: formattedTasks
+    });
+  } catch (err) {
+    logger.error(`Get user tasks error: ${err.message}`);
     next(err);
   }
 };

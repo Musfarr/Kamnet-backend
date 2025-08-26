@@ -1,74 +1,89 @@
 const Application = require('../models/application.model');
 const Task = require('../models/task.model');
-const User = require('../models/user.model');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger();
 
 /**
- * @desc    Create a new application
+ * @desc    Apply to a task (create an application)
  * @route   POST /api/applications
  * @access  Private/Talent
  */
 exports.createApplication = async (req, res, next) => {
   try {
-    const { taskId, coverLetter, proposedBudget, estimatedCompletionTime } = req.body;
-    
+    // Ensure only talents can apply
+    if (req.user.role !== 'talent') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only talents are allowed to apply for tasks.'
+      });
+    }
+
+    const { taskId } = req.params;
+    const { coverLetter, proposedBudget, estimatedCompletionTime } = req.body;
+
     // Check if task exists
     const task = await Task.findById(taskId);
-    
+
     if (!task) {
       return res.status(404).json({
         success: false,
         message: 'Task not found'
       });
     }
-    
-    // Check if task is still open
+
+    // Check if task is open
     if (task.status !== 'open') {
       return res.status(400).json({
         success: false,
-        message: `Task is ${task.status} and no longer accepting applications`
+        message: `Task is ${task.status} and not accepting applications`
       });
     }
-    
-    // Check if talent has already applied to this task
+
+    // Check if talent has already applied
     const existingApplication = await Application.findOne({
       task: taskId,
       talent: req.userId
     });
-    
+
     if (existingApplication) {
       return res.status(400).json({
         success: false,
         message: 'You have already applied to this task'
       });
     }
-    
+
     // Create application
     const application = await Application.create({
       task: taskId,
       talent: req.userId,
       coverLetter,
       proposedBudget,
-      estimatedCompletionTime,
-      currency: task.currency
+      currency: task.currency || 'PKR',
+      estimatedCompletionTime
     });
-    
-    // Populate task and talent information for response
-    const populatedApplication = await Application.findById(application._id)
-      .populate({
-        path: 'task',
-        select: 'title description budget status location deadlineDate category'
-      })
-      .populate({
-        path: 'talent',
-        select: 'name picture location'
-      });
-    
+
+    // Format response to match frontend expectation
+    const formattedApplication = {
+      id: application._id,
+      task: {
+        id: task._id,
+        title: task.title,
+        budget: task.budget,
+        status: task.status,
+        location: task.location
+      },
+      coverLetter: application.coverLetter,
+      proposedBudget: application.proposedBudget,
+      status: application.status,
+      estimatedCompletionTime: application.estimatedCompletionTime,
+      createdAt: application.createdAt
+    };
+
     res.status(201).json({
       success: true,
-      data: populatedApplication
+      message: 'Application submitted successfully',
+      data: formattedApplication
     });
   } catch (err) {
     logger.error(`Create application error: ${err.message}`);

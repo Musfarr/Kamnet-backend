@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-const UserSchema = new mongoose.Schema({
+const TalentSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'Please add a name'],
@@ -36,8 +36,8 @@ const UserSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
+    enum: ['talent', 'admin'],
+    default: 'talent'
   },
   googleId: {
     type: String,
@@ -61,6 +61,14 @@ const UserSchema = new mongoose.Schema({
     default: 'Lahore, Pakistan'
   },
   // Additional profile fields
+  skills: {
+    type: [String],
+    default: []
+  },
+  hourlyRate: {
+    type: Number,
+    default: 0
+  },
   address: {
     type: String,
     maxlength: [100, 'Address cannot be more than 100 characters']
@@ -98,7 +106,7 @@ const UserSchema = new mongoose.Schema({
 });
 
 // Encrypt password using bcrypt before save
-UserSchema.pre('save', async function(next) {
+TalentSchema.pre('save', async function(next) {
   // Only hash the password if it has been modified (or is new)
   if (!this.isModified('password') || !this.password) {
     return next();
@@ -115,8 +123,8 @@ UserSchema.pre('save', async function(next) {
   }
 });
 
-// Sign JWT and return - DEPRECATED, use token.js utility instead
-UserSchema.methods.getSignedJwtToken = function() {
+// Sign JWT and return
+TalentSchema.methods.getSignedJwtToken = function() {
   return jwt.sign(
     { id: this._id, role: this.role },
     process.env.JWT_SECRET,
@@ -125,13 +133,13 @@ UserSchema.methods.getSignedJwtToken = function() {
 };
 
 // Match user entered password to hashed password in database
-UserSchema.methods.matchPassword = async function(enteredPassword) {
+TalentSchema.methods.matchPassword = async function(enteredPassword) {
   if (!this.password) return false;
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
 // Generate and hash password token
-UserSchema.methods.getResetPasswordToken = function() {
+TalentSchema.methods.getResetPasswordToken = function() {
   // Generate token
   const resetToken = crypto.randomBytes(20).toString('hex');
 
@@ -147,4 +155,4 @@ UserSchema.methods.getResetPasswordToken = function() {
   return resetToken;
 };
 
-module.exports = mongoose.model('User', UserSchema);
+module.exports = mongoose.model('Talent', TalentSchema);

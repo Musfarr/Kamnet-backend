@@ -5,7 +5,8 @@ const {
   getUserProfile,
   updateProfile,
   deleteAccount,
-  getUsers
+  getUsers,
+  getUserTasks
 } = require('../controllers/user.controller');
 const { protect, authorize } = require('../middleware/auth');
 const { validate } = require('../middleware/validator');
@@ -20,6 +21,7 @@ router.put('/complete-profile', protect, validate(validationSchemas.completeProf
 router.put('/:userId/profile', protect, validate(validationSchemas.completeProfile), updateProfile);
 router.put('/', protect, validate(validationSchemas.completeProfile), updateProfile);
 router.delete('/', protect, deleteAccount);
+router.get('/tasks', protect, authorize('user'), getUserTasks);
 
 // Admin routes
 router.get('/', protect, authorize('admin'), getUsers);

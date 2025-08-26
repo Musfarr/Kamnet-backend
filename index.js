@@ -21,8 +21,6 @@ const userRoutes = require('./src/routes/user.routes');
 const talentRoutes = require('./src/routes/talent.routes');
 const taskRoutes = require('./src/routes/task.routes');
 const applicationRoutes = require('./src/routes/application.routes');
-const frontendRoutes = require('./src/routes/frontend.routes');
-const compatibilityRoutes = require('./src/routes/compatibility.routes');
 
 // Create logger instance
 const logger = createLogger();
@@ -104,8 +102,6 @@ app.use('/api/users', userRoutes);
 app.use('/api/talents', talentRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/applications', applicationRoutes);
-app.use('/api/frontend', frontendRoutes);
-app.use('/api', compatibilityRoutes); // Direct compatibility with frontend routes
 
 // Health check endpoint with enhanced system information
 app.get('/health', (req, res) => {

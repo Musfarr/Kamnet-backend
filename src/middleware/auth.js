@@ -1,6 +1,7 @@
 const { verifyToken } = require('../utils/token');
 const { createLogger } = require('../utils/logger');
 const User = require('../models/user.model');
+const Talent = require('../models/talent.model');
 
 const logger = createLogger();
 
@@ -24,8 +25,14 @@ const protect = async (req, res, next) => {
       req.userId = decoded.id;
       req.role = decoded.role;
       
-      // Always fetch the user to have full user object available in controllers
-      const user = await User.findById(req.userId);
+      // Fetch the user/talent from the appropriate collection based on role
+      let user;
+      if (decoded.role === 'talent') {
+        user = await Talent.findById(req.userId);
+      } else {
+        user = await User.findById(req.userId);
+      }
+
       if (!user) {
         throw new Error('User no longer exists');
       }

@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/user.model');
+const Talent = require('../models/talent.model');
 const { createLogger } = require('../utils/logger');
 const { generateToken, generateRefreshToken, verifyRefreshToken, blacklistToken, generatePasswordResetToken } = require('../utils/token');
 const emailService = require('../utils/emailService');
@@ -58,21 +59,24 @@ exports.register = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
 
-    // Check if user already exists
+    // Check if email already exists in either collection
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    const existingTalent = await Talent.findOne({ email });
+
+    if (existingUser || existingTalent) {
       return res.status(400).json({
         success: false,
         message: 'Email already registered'
       });
     }
 
-    // Create user
-    const user = await User.create({
+    // Determine which model to use and create the user/talent
+    const Model = role === 'talent' ? Talent : User;
+    const user = await Model.create({
       name,
       email,
       password,
-      role: role || 'user'
+      role // Let the schema handle the default role if not provided
     });
 
     // Send welcome email (non-blocking)
@@ -108,8 +112,11 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    // Check for user
-    const user = await User.findOne({ email }).select('+password');
+    // Check for user in both collections
+    let user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      user = await Talent.findOne({ email }).select('+password');
+    }
 
     if (!user) {
       return res.status(401).json({
@@ -169,8 +176,11 @@ exports.googleAuth = async (req, res, next) => {
 
     const { email, name, picture, sub: googleId } = payload;
 
-    // Check if user exists
+    // Check if user exists in either collection
     let user = await User.findOne({ email });
+    if (!user) {
+        user = await Talent.findOne({ email });
+    }
 
     if (user) {
       // Update existing user's Google ID if they don't have one
@@ -180,13 +190,14 @@ exports.googleAuth = async (req, res, next) => {
         await user.save();
       }
     } else {
-      // Create new user
-      user = await User.create({
+      // Create new user or talent based on role
+      const Model = role === 'talent' ? Talent : User;
+      user = await Model.create({
         name,
         email,
         googleId,
         picture,
-        role: role || 'user'
+        role // Let schema handle default
       });
     }
 
@@ -205,21 +216,13 @@ exports.googleAuth = async (req, res, next) => {
  */
 exports.getMe = async (req, res, next) => {
   try {
-    const user = await User.findById(req.userId);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
+    // req.user is already populated by the 'protect' middleware
     res.status(200).json({
       success: true,
-      data: user
+      data: req.user
     });
   } catch (err) {
-    logger.error(`Get me error: ${err.message}`);
+    logger.error(`GetMe error: ${err.message}`);
     next(err);
   }
 };
@@ -266,47 +269,32 @@ exports.refreshToken = async (req, res, next) => {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-      return res.status(400).json({
-        success: false,
-        message: 'Refresh token is required'
-      });
+      return res.status(400).json({ success: false, message: 'Refresh token is required' });
     }
 
-    // Verify the refresh token
-    let decoded;
-    try {
-      decoded = verifyRefreshToken(refreshToken);
-    } catch (error) {
-      return res.status(401).json({
-        success: false,
-        message: error.message || 'Invalid refresh token'
-      });
+    const decoded = verifyRefreshToken(refreshToken);
+    
+    // Find user in appropriate collection
+    let user = await User.findById(decoded.id);
+    if (!user) {
+        user = await Talent.findById(decoded.id);
     }
-
-    // Find the user
-    const user = await User.findById(decoded.id);
 
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not found'
-      });
+      return res.status(401).json({ success: false, message: 'Invalid refresh token' });
     }
 
-    // Generate new access token
-    const { token, expires } = generateToken({ 
-      id: user._id,
-      role: user.role 
-    });
+    // Generate a new access token
+    const { token, expires } = generateToken(user.toObject());
 
     res.status(200).json({
       success: true,
-      token,
+      token: token,
       expires
     });
   } catch (err) {
     logger.error(`Refresh token error: ${err.message}`);
-    next(err);
+    return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
   }
 };
 
@@ -318,52 +306,32 @@ exports.refreshToken = async (req, res, next) => {
 exports.forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide an email address'
-      });
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await Talent.findOne({ email });
     }
-
-    // Find user by email
-    const user = await User.findOne({ email });
 
     if (!user) {
-      // For security reasons, still say success even if user doesn't exist
-      return res.status(200).json({
-        success: true,
-        message: 'If an account exists, a password reset email will be sent'
-      });
+      // Note: We send a success-like response to prevent email enumeration
+      return res.status(200).json({ success: true, data: 'Email sent' });
     }
 
-    // Generate reset token
-    const { resetToken, resetTokenHash, resetTokenExpiry } = generatePasswordResetToken();
-
-    // Save reset token to user
-    user.passwordResetToken = resetTokenHash;
-    user.passwordResetExpire = new Date(resetTokenExpiry);
+    // Get reset token
+    const resetToken = user.getResetPasswordToken();
     await user.save({ validateBeforeSave: false });
 
-    // Send email with reset token
-    try {
-      await emailService.sendPasswordResetEmail({
-        email: user.email,
-        token: resetToken,
-        name: user.name
-      });
+    // Create reset URL
+    const resetUrl = `${req.protocol}://${req.get('host')}/api/auth/resetpassword/${resetToken}`;
 
-      res.status(200).json({
-        success: true,
-        message: 'If an account exists, a password reset email will be sent'
-      });
-    } catch (emailError) {
-      // If email fails, remove token from user
-      user.passwordResetToken = undefined;
-      user.passwordResetExpire = undefined;
+    try {
+      await emailService.sendPasswordResetEmail(user, resetUrl);
+      res.status(200).json({ success: true, data: 'Email sent' });
+    } catch (err) {
+      logger.error(`Password reset email failed: ${err.message}`);
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
       await user.save({ validateBeforeSave: false });
 
-      logger.error(`Password reset email error: ${emailError.message}`);
       return res.status(500).json({
         success: false,
         message: 'Email could not be sent'
@@ -404,16 +372,23 @@ exports.resetPassword = async (req, res, next) => {
       const crypto = require('crypto');
 
       // Hash the token from the URL
-      const resetTokenHash = crypto
+      let resetToken = crypto
         .createHash('sha256')
         .update(token)
         .digest('hex');
 
       // Find user with matching token and valid expiry
-      const user = await User.findOne({
-        passwordResetToken: resetTokenHash,
+      let user = await User.findOne({
+        passwordResetToken: resetToken,
         passwordResetExpire: { $gt: Date.now() }
       });
+
+      if (!user) {
+        user = await Talent.findOne({
+          passwordResetToken: resetToken,
+          passwordResetExpire: { $gt: Date.now() }
+        });
+      }
 
       if (!user) {
         return res.status(400).json({
