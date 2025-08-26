@@ -16,8 +16,11 @@ const validationSchemas = require('../utils/validationSchemas');
 
 // Public routes
 router.post('/register', validate(validationSchemas.register), register);
+router.post('/register/talent', validate(validationSchemas.register), register);
 router.post('/login', validate(validationSchemas.login), login);
+router.post('/login/talent', validate(validationSchemas.login), login);
 router.post('/google', validate(validationSchemas.googleAuth), googleAuth);
+router.post('/google/talent', validate(validationSchemas.googleAuth), googleAuth);
 router.post('/refresh-token', validate(validationSchemas.refreshToken), refreshToken);
 router.post('/forgot-password', validate(validationSchemas.forgotPassword), forgotPassword);
 router.put('/reset-password/:token', validate(validationSchemas.resetPassword), resetPassword);
