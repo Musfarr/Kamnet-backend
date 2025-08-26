@@ -40,15 +40,17 @@ if (process.env.NODE_ENV !== 'test') {
 
 // CORS Configuration - Allow frontend domain with exposure of pagination headers
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        process.env.FRONTEND_URL || 'https://kamnet.pk', 
-        'https://www.kamnetcorp.com',
-        'https://kamnetcorp.com',
-        /\.kamnet\.pk$/,
-        /\.kamnetcorp\.com$/
-      ]
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: [
+    // Production domains
+    process.env.FRONTEND_URL || 'https://kamnet.pk', 
+    'https://www.kamnetcorp.com',
+    'https://kamnetcorp.com',
+    /\.kamnet\.pk$/,
+    /\.kamnetcorp\.com$/,
+    // Development domains (always allowed for local development)
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
